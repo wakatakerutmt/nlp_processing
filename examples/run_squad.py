@@ -653,8 +653,11 @@ def main():
         # Load a trained model and vocabulary that you have fine-tuned
         model = model_class.from_pretrained(
             args.output_dir, force_download=True)
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case)
+        # tokenizer = tokenizer_class.from_pretrained(
+        #     args.output_dir, do_lower_case=args.do_lower_case)
+        tokenizer = tokenizer_class(model_file=args.model_file, vocab_file=args.vocab_file, do_lower_case=True,
+                                    do_word_tokenize=True, do_subword_tokenize=False,
+                                    word_tokenizer_type='sentencepiece')
         model.to(args.device)
     print("-------------interval13-----------------")
 

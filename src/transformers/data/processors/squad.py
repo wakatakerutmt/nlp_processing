@@ -196,9 +196,9 @@ def squad_convert_examples_to_features(
                 len(truncated_query) - sequence_pair_added_tokens,
                 truncation_strategy="only_second" if tokenizer.padding_side == "right" else "only_first",
             )
-            print("--------------------------encoded_dict-------------------")
-            print(encoded_dict)
-            print("--------------------------end_encoded_dict-------------------")
+            # print("--------------------------encoded_dict-------------------")
+            # print(encoded_dict)
+            # print("--------------------------end_encoded_dict-------------------")
             paragraph_len = min(
                 len(all_doc_tokens) - len(spans) * doc_stride,
                 max_seq_length - len(truncated_query) -
@@ -311,12 +311,7 @@ def squad_convert_examples_to_features(
                 )
             )
             unique_id += 1
-    # debug
-    print("-------features--------")
-    for f in features:
-        print(f)
-    # enddebug
-    print("-------endfeatures-------------")
+
     if return_dataset == "pt":
         if not is_torch_available():
             raise ImportError(

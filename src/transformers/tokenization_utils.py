@@ -717,8 +717,8 @@ class PreTrainedTokenizer(object):
         # print(self.added_tokens_encoder)
         # print("-------all_special_tokens-----------")
         # print(all_special_tokens)
-        print("-------text-----------")
-        print(text)
+        # print("-------text-----------")
+        # print(text)
         added_tokens = list(self.added_tokens_encoder.keys()
                             ) + all_special_tokens
         tokenized_text = split_on_tokens(added_tokens, text)
