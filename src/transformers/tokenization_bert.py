@@ -171,22 +171,27 @@ class BertTokenizer(PreTrainedTokenizer):
             mask_token=mask_token,
             **kwargs,
         )
-        self.max_len_single_sentence = self.max_len - 2  # take into account special tokens
-        self.max_len_sentences_pair = self.max_len - 3  # take into account special tokens
+        self.max_len_single_sentence = self.max_len - \
+            2  # take into account special tokens
+        self.max_len_sentences_pair = self.max_len - \
+            3  # take into account special tokens
 
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 "Can't find a vocabulary file at path '{}'. To load the vocabulary from a Google pretrained "
-                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(vocab_file)
+                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
+                    vocab_file)
             )
         self.vocab = load_vocab(vocab_file)
-        self.ids_to_tokens = collections.OrderedDict([(ids, tok) for tok, ids in self.vocab.items()])
+        self.ids_to_tokens = collections.OrderedDict(
+            [(ids, tok) for tok, ids in self.vocab.items()])
         self.do_basic_tokenize = do_basic_tokenize
         if do_basic_tokenize:
             self.basic_tokenizer = BasicTokenizer(
                 do_lower_case=do_lower_case, never_split=never_split, tokenize_chinese_chars=tokenize_chinese_chars
             )
-        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, unk_token=self.unk_token)
+        self.wordpiece_tokenizer = WordpieceTokenizer(
+            vocab=self.vocab, unk_token=self.unk_token)
 
     @property
     def vocab_size(self):
@@ -276,7 +281,8 @@ class BertTokenizer(PreTrainedTokenizer):
         """Save the tokenizer vocabulary to a directory or file."""
         index = 0
         if os.path.isdir(vocab_path):
-            vocab_file = os.path.join(vocab_path, VOCAB_FILES_NAMES["vocab_file"])
+            vocab_file = os.path.join(
+                vocab_path, VOCAB_FILES_NAMES["vocab_file"])
         else:
             vocab_file = vocab_path
         with open(vocab_file, "w", encoding="utf-8") as writer:
@@ -284,7 +290,8 @@ class BertTokenizer(PreTrainedTokenizer):
                 if index != token_index:
                     logger.warning(
                         "Saving vocabulary to {}: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!".format(vocab_file)
+                        " Please check that the vocabulary is not corrupted!".format(
+                            vocab_file)
                     )
                     index = token_index
                 writer.write(token + "\n")
@@ -325,7 +332,8 @@ class BasicTokenizer(object):
                 Now implemented directly at the base class level (see :func:`PreTrainedTokenizer.tokenize`)
                 List of token not to split.
         """
-        never_split = self.never_split + (never_split if never_split is not None else [])
+        never_split = self.never_split + \
+            (never_split if never_split is not None else [])
         text = self._clean_text(text)
         # This was added on November 1st, 2018 for the multilingual and Chinese
         # models. This is also applied to the English models now, but it doesn't
@@ -563,7 +571,8 @@ class BertTokenizerFast(PreTrainedTokenizerFast):
             **kwargs,
         )
 
-        self._tokenizer = tk.Tokenizer(tk.models.WordPiece.from_files(vocab_file, unk_token=unk_token))
+        self._tokenizer = tk.Tokenizer(
+            tk.models.WordPiece.from_files(vocab_file, unk_token=unk_token))
         self._update_special_tokens()
         self._tokenizer.with_pre_tokenizer(
             tk.pre_tokenizers.BertPreTokenizer.new(
@@ -583,7 +592,8 @@ class BertTokenizerFast(PreTrainedTokenizerFast):
                 )
             )
         if max_length is not None:
-            self._tokenizer.with_truncation(max_length, stride=stride, strategy=truncation_strategy)
+            self._tokenizer.with_truncation(
+                max_length, stride=stride, strategy=truncation_strategy)
         self._tokenizer.with_padding(
             max_length=max_length if pad_to_max_length else None,
             direction=self.padding_side,
