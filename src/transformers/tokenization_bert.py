@@ -14,81 +14,75 @@
 # limitations under the License.
 """Tokenization classes."""
 
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import collections
 import logging
 import os
 import unicodedata
+from io import open
 
-import tokenizers as tk
-
-from .tokenization_utils import PreTrainedTokenizer, PreTrainedTokenizerFast
-
+from .tokenization_utils import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
 
-VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt"}
+VOCAB_FILES_NAMES = {'vocab_file': 'vocab.txt'}
 
 PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {
-        "bert-base-uncased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
-        "bert-large-uncased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt",
-        "bert-base-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt",
-        "bert-large-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-vocab.txt",
-        "bert-base-multilingual-uncased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-vocab.txt",
-        "bert-base-multilingual-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-vocab.txt",
-        "bert-base-chinese": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-vocab.txt",
-        "bert-base-german-cased": "https://int-deepset-models-bert.s3.eu-central-1.amazonaws.com/pytorch/bert-base-german-cased-vocab.txt",
-        "bert-large-uncased-whole-word-masking": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-vocab.txt",
-        "bert-large-cased-whole-word-masking": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-vocab.txt",
-        "bert-large-uncased-whole-word-masking-finetuned-squad": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-finetuned-squad-vocab.txt",
-        "bert-large-cased-whole-word-masking-finetuned-squad": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-finetuned-squad-vocab.txt",
-        "bert-base-cased-finetuned-mrpc": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-finetuned-mrpc-vocab.txt",
-        "bert-base-german-dbmdz-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-dbmdz-cased-vocab.txt",
-        "bert-base-german-dbmdz-uncased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-dbmdz-uncased-vocab.txt",
-        "bert-base-finnish-cased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-cased-v1/vocab.txt",
-        "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/vocab.txt",
+    'vocab_file':
+    {
+        'bert-base-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
+        'bert-large-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt",
+        'bert-base-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt",
+        'bert-large-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-vocab.txt",
+        'bert-base-multilingual-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-vocab.txt",
+        'bert-base-multilingual-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-vocab.txt",
+        'bert-base-chinese': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-vocab.txt",
+        'bert-base-german-cased': "https://int-deepset-models-bert.s3.eu-central-1.amazonaws.com/pytorch/bert-base-german-cased-vocab.txt",
+        'bert-large-uncased-whole-word-masking': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-vocab.txt",
+        'bert-large-cased-whole-word-masking': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-vocab.txt",
+        'bert-large-uncased-whole-word-masking-finetuned-squad': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-finetuned-squad-vocab.txt",
+        'bert-large-cased-whole-word-masking-finetuned-squad': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-finetuned-squad-vocab.txt",
+        'bert-base-cased-finetuned-mrpc': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-finetuned-mrpc-vocab.txt",
+        'bert-base-german-dbmdz-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-dbmdz-cased-vocab.txt",
+        'bert-base-german-dbmdz-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-dbmdz-uncased-vocab.txt",
     }
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "bert-base-uncased": 512,
-    "bert-large-uncased": 512,
-    "bert-base-cased": 512,
-    "bert-large-cased": 512,
-    "bert-base-multilingual-uncased": 512,
-    "bert-base-multilingual-cased": 512,
-    "bert-base-chinese": 512,
-    "bert-base-german-cased": 512,
-    "bert-large-uncased-whole-word-masking": 512,
-    "bert-large-cased-whole-word-masking": 512,
-    "bert-large-uncased-whole-word-masking-finetuned-squad": 512,
-    "bert-large-cased-whole-word-masking-finetuned-squad": 512,
-    "bert-base-cased-finetuned-mrpc": 512,
-    "bert-base-german-dbmdz-cased": 512,
-    "bert-base-german-dbmdz-uncased": 512,
-    "bert-base-finnish-cased-v1": 512,
-    "bert-base-finnish-uncased-v1": 512,
+    'bert-base-uncased': 512,
+    'bert-large-uncased': 512,
+    'bert-base-cased': 512,
+    'bert-large-cased': 512,
+    'bert-base-multilingual-uncased': 512,
+    'bert-base-multilingual-cased': 512,
+    'bert-base-chinese': 512,
+    'bert-base-german-cased': 512,
+    'bert-large-uncased-whole-word-masking': 512,
+    'bert-large-cased-whole-word-masking': 512,
+    'bert-large-uncased-whole-word-masking-finetuned-squad': 512,
+    'bert-large-cased-whole-word-masking-finetuned-squad': 512,
+    'bert-base-cased-finetuned-mrpc': 512,
+    'bert-base-german-dbmdz-cased': 512,
+    'bert-base-german-dbmdz-uncased': 512,
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
-    "bert-base-uncased": {"do_lower_case": True},
-    "bert-large-uncased": {"do_lower_case": True},
-    "bert-base-cased": {"do_lower_case": False},
-    "bert-large-cased": {"do_lower_case": False},
-    "bert-base-multilingual-uncased": {"do_lower_case": True},
-    "bert-base-multilingual-cased": {"do_lower_case": False},
-    "bert-base-chinese": {"do_lower_case": False},
-    "bert-base-german-cased": {"do_lower_case": False},
-    "bert-large-uncased-whole-word-masking": {"do_lower_case": True},
-    "bert-large-cased-whole-word-masking": {"do_lower_case": False},
-    "bert-large-uncased-whole-word-masking-finetuned-squad": {"do_lower_case": True},
-    "bert-large-cased-whole-word-masking-finetuned-squad": {"do_lower_case": False},
-    "bert-base-cased-finetuned-mrpc": {"do_lower_case": False},
-    "bert-base-german-dbmdz-cased": {"do_lower_case": False},
-    "bert-base-german-dbmdz-uncased": {"do_lower_case": True},
-    "bert-base-finnish-cased-v1": {"do_lower_case": False},
-    "bert-base-finnish-uncased-v1": {"do_lower_case": True},
+    'bert-base-uncased': {'do_lower_case': True},
+    'bert-large-uncased': {'do_lower_case': True},
+    'bert-base-cased': {'do_lower_case': False},
+    'bert-large-cased': {'do_lower_case': False},
+    'bert-base-multilingual-uncased': {'do_lower_case': True},
+    'bert-base-multilingual-cased': {'do_lower_case': False},
+    'bert-base-chinese': {'do_lower_case': False},
+    'bert-base-german-cased': {'do_lower_case': False},
+    'bert-large-uncased-whole-word-masking': {'do_lower_case': True},
+    'bert-large-cased-whole-word-masking': {'do_lower_case': False},
+    'bert-large-uncased-whole-word-masking-finetuned-squad': {'do_lower_case': True},
+    'bert-large-cased-whole-word-masking-finetuned-squad': {'do_lower_case': False},
+    'bert-base-cased-finetuned-mrpc': {'do_lower_case': False},
+    'bert-base-german-dbmdz-cased': {'do_lower_case': False},
+    'bert-base-german-dbmdz-uncased': {'do_lower_case': True},
 }
 
 
@@ -98,7 +92,7 @@ def load_vocab(vocab_file):
     with open(vocab_file, "r", encoding="utf-8") as reader:
         tokens = reader.readlines()
     for index, token in enumerate(tokens):
-        token = token.rstrip("\n")
+        token = token.rstrip('\n')
         vocab[token] = index
     return vocab
 
@@ -119,12 +113,12 @@ class BertTokenizer(PreTrainedTokenizer):
 
     Args:
         vocab_file: Path to a one-wordpiece-per-line vocabulary file
-        do_lower_case: Whether to lower case the input. Only has an effect when do_basic_tokenize=True
+        do_lower_case: Whether to lower case the input. Only has an effect when do_wordpiece_only=False
         do_basic_tokenize: Whether to do basic tokenization before wordpiece.
         max_len: An artificial maximum length to truncate tokenized sequences to; Effective maximum length is always the
             minimum of this value (if specified) and the underlying BERT model's sequence length.
         never_split: List of tokens which will never be split during tokenization. Only has an effect when
-            do_basic_tokenize=True
+            do_wordpiece_only=False
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
@@ -132,20 +126,9 @@ class BertTokenizer(PreTrainedTokenizer):
     pretrained_init_configuration = PRETRAINED_INIT_CONFIGURATION
     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
 
-    def __init__(
-        self,
-        vocab_file,
-        do_lower_case=True,
-        do_basic_tokenize=True,
-        never_split=None,
-        unk_token="[UNK]",
-        sep_token="[SEP]",
-        pad_token="[PAD]",
-        cls_token="[CLS]",
-        mask_token="[MASK]",
-        tokenize_chinese_chars=True,
-        **kwargs
-    ):
+    def __init__(self, vocab_file, do_lower_case=True, do_basic_tokenize=True, never_split=None,
+                 unk_token="[UNK]", sep_token="[SEP]", pad_token="[PAD]", cls_token="[CLS]",
+                 mask_token="[MASK]", tokenize_chinese_chars=True, **kwargs):
         """Constructs a BertTokenizer.
 
         Args:
@@ -163,14 +146,9 @@ class BertTokenizer(PreTrainedTokenizer):
                 This should likely be deactivated for Japanese:
                 see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328
         """
-        super(BertTokenizer, self).__init__(
-            unk_token=unk_token,
-            sep_token=sep_token,
-            pad_token=pad_token,
-            cls_token=cls_token,
-            mask_token=mask_token,
-            **kwargs,
-        )
+        super(BertTokenizer, self).__init__(unk_token=unk_token, sep_token=sep_token,
+                                            pad_token=pad_token, cls_token=cls_token,
+                                            mask_token=mask_token, **kwargs)
         self.max_len_single_sentence = self.max_len - \
             2  # take into account special tokens
         self.max_len_sentences_pair = self.max_len - \
@@ -179,17 +157,15 @@ class BertTokenizer(PreTrainedTokenizer):
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 "Can't find a vocabulary file at path '{}'. To load the vocabulary from a Google pretrained "
-                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
-                    vocab_file)
-            )
+                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(vocab_file))
         self.vocab = load_vocab(vocab_file)
         self.ids_to_tokens = collections.OrderedDict(
             [(ids, tok) for tok, ids in self.vocab.items()])
         self.do_basic_tokenize = do_basic_tokenize
         if do_basic_tokenize:
-            self.basic_tokenizer = BasicTokenizer(
-                do_lower_case=do_lower_case, never_split=never_split, tokenize_chinese_chars=tokenize_chinese_chars
-            )
+            self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
+                                                  never_split=never_split,
+                                                  tokenize_chinese_chars=tokenize_chinese_chars)
         self.wordpiece_tokenizer = WordpieceTokenizer(
             vocab=self.vocab, unk_token=self.unk_token)
 
@@ -208,16 +184,16 @@ class BertTokenizer(PreTrainedTokenizer):
         return split_tokens
 
     def _convert_token_to_id(self, token):
-        """ Converts a token (str) in an id using the vocab. """
+        """ Converts a token (str/unicode) in an id using the vocab. """
         return self.vocab.get(token, self.vocab.get(self.unk_token))
 
     def _convert_id_to_token(self, index):
-        """Converts an index (integer) in a token (str) using the vocab."""
+        """Converts an index (integer) in a token (string/unicode) using the vocab."""
         return self.ids_to_tokens.get(index, self.unk_token)
 
     def convert_tokens_to_string(self, tokens):
         """ Converts a sequence of tokens (string) in a single string. """
-        out_string = " ".join(tokens).replace(" ##", "").strip()
+        out_string = ' '.join(tokens).replace(' ##', '').strip()
         return out_string
 
     def build_inputs_with_special_tokens(self, token_ids_0, token_ids_1=None):
@@ -252,10 +228,8 @@ class BertTokenizer(PreTrainedTokenizer):
 
         if already_has_special_tokens:
             if token_ids_1 is not None:
-                raise ValueError(
-                    "You should not supply a second sequence if the provided sequence of "
-                    "ids is already formated with special tokens for the model."
-                )
+                raise ValueError("You should not supply a second sequence if the provided sequence of "
+                                 "ids is already formated with special tokens for the model.")
             return list(map(lambda x: 1 if x in [self.sep_token_id, self.cls_token_id] else 0, token_ids_0))
 
         if token_ids_1 is not None:
@@ -282,19 +256,16 @@ class BertTokenizer(PreTrainedTokenizer):
         index = 0
         if os.path.isdir(vocab_path):
             vocab_file = os.path.join(
-                vocab_path, VOCAB_FILES_NAMES["vocab_file"])
+                vocab_path, VOCAB_FILES_NAMES['vocab_file'])
         else:
             vocab_file = vocab_path
         with open(vocab_file, "w", encoding="utf-8") as writer:
             for token, token_index in sorted(self.vocab.items(), key=lambda kv: kv[1]):
                 if index != token_index:
-                    logger.warning(
-                        "Saving vocabulary to {}: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!".format(
-                            vocab_file)
-                    )
+                    logger.warning("Saving vocabulary to {}: vocabulary indices are not consecutive."
+                                   " Please check that the vocabulary is not corrupted!".format(vocab_file))
                     index = token_index
-                writer.write(token + "\n")
+                writer.write(token + u'\n')
                 index += 1
         return (vocab_file,)
 
@@ -410,16 +381,14 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if (
-            (cp >= 0x4E00 and cp <= 0x9FFF)
-            or (cp >= 0x3400 and cp <= 0x4DBF)  #
-            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
-            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
-            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
-            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
-            or (cp >= 0xF900 and cp <= 0xFAFF)
-            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
-        ):  #
+        if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
+                (cp >= 0x3400 and cp <= 0x4DBF) or  #
+                (cp >= 0x20000 and cp <= 0x2A6DF) or  #
+                (cp >= 0x2A700 and cp <= 0x2B73F) or  #
+                (cp >= 0x2B740 and cp <= 0x2B81F) or  #
+                (cp >= 0x2B820 and cp <= 0x2CEAF) or
+                (cp >= 0xF900 and cp <= 0xFAFF) or  #
+                (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
             return True
 
         return False
@@ -429,7 +398,7 @@ class BasicTokenizer(object):
         output = []
         for char in text:
             cp = ord(char)
-            if cp == 0 or cp == 0xFFFD or _is_control(char):
+            if cp == 0 or cp == 0xfffd or _is_control(char):
                 continue
             if _is_whitespace(char):
                 output.append(" ")
@@ -529,76 +498,10 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
+    if ((cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or
+            (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126)):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):
         return True
     return False
-
-
-class BertTokenizerFast(PreTrainedTokenizerFast):
-    vocab_files_names = VOCAB_FILES_NAMES
-    pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP
-    pretrained_init_configuration = PRETRAINED_INIT_CONFIGURATION
-    max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
-
-    def __init__(
-        self,
-        vocab_file,
-        do_lower_case=True,
-        do_basic_tokenize=True,
-        never_split=None,
-        unk_token="[UNK]",
-        sep_token="[SEP]",
-        pad_token="[PAD]",
-        cls_token="[CLS]",
-        mask_token="[MASK]",
-        tokenize_chinese_chars=True,
-        max_length=None,
-        pad_to_max_length=False,
-        stride=0,
-        truncation_strategy="longest_first",
-        add_special_tokens=True,
-        **kwargs
-    ):
-        super(BertTokenizerFast, self).__init__(
-            unk_token=unk_token,
-            sep_token=sep_token,
-            pad_token=pad_token,
-            cls_token=cls_token,
-            mask_token=mask_token,
-            **kwargs,
-        )
-
-        self._tokenizer = tk.Tokenizer(
-            tk.models.WordPiece.from_files(vocab_file, unk_token=unk_token))
-        self._update_special_tokens()
-        self._tokenizer.with_pre_tokenizer(
-            tk.pre_tokenizers.BertPreTokenizer.new(
-                do_basic_tokenize=do_basic_tokenize,
-                do_lower_case=do_lower_case,
-                tokenize_chinese_chars=tokenize_chinese_chars,
-                never_split=never_split if never_split is not None else [],
-            )
-        )
-        self._tokenizer.with_decoder(tk.decoders.WordPiece.new())
-
-        if add_special_tokens:
-            self._tokenizer.with_post_processor(
-                tk.processors.BertProcessing.new(
-                    (sep_token, self._tokenizer.token_to_id(sep_token)),
-                    (cls_token, self._tokenizer.token_to_id(cls_token)),
-                )
-            )
-        if max_length is not None:
-            self._tokenizer.with_truncation(
-                max_length, stride=stride, strategy=truncation_strategy)
-        self._tokenizer.with_padding(
-            max_length=max_length if pad_to_max_length else None,
-            direction=self.padding_side,
-            pad_id=self.pad_token_id,
-            pad_type_id=self.pad_token_type_id,
-            pad_token=self.pad_token,
-        )
-        self._decoder = tk.decoders.WordPiece.new()

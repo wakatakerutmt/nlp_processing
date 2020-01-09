@@ -14,56 +14,67 @@
 # limitations under the License.
 """Tokenization classes."""
 
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import collections
 import logging
 import os
+import six
 import unicodedata
+from io import open
 
-from .tokenization_bert import BasicTokenizer, BertTokenizer, WordpieceTokenizer, load_vocab
+from .tokenization_bert import BertTokenizer, BasicTokenizer, WordpieceTokenizer, load_vocab
+from .tokenization_utils import PreTrainedTokenizer
 
+# sentencepiece用に追加
+import re
+import unicodedata
+import sentencepiece as sp
+import six
+# 　ここまで
 
 logger = logging.getLogger(__name__)
 
-VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt"}
+VOCAB_FILES_NAMES = {'vocab_file': 'vocab.txt'}
 
 PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {
-        "bert-base-japanese": "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-vocab.txt",
-        "bert-base-japanese-whole-word-masking": "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-whole-word-masking-vocab.txt",
-        "bert-base-japanese-char": "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-char-vocab.txt",
-        "bert-base-japanese-char-whole-word-masking": "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-char-whole-word-masking-vocab.txt",
+    'vocab_file':
+    {
+        'bert-base-japanese': "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-vocab.txt",
+        'bert-base-japanese-whole-word-masking': "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-whole-word-masking-vocab.txt",
+        'bert-base-japanese-char': "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-char-vocab.txt",
+        'bert-base-japanese-char-whole-word-masking': "https://s3.amazonaws.com/models.huggingface.co/bert/cl-tohoku/bert-base-japanese-char-whole-word-masking-vocab.txt"
     }
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "bert-base-japanese": 512,
-    "bert-base-japanese-whole-word-masking": 512,
-    "bert-base-japanese-char": 512,
-    "bert-base-japanese-char-whole-word-masking": 512,
+    'bert-base-japanese': 512,
+    'bert-base-japanese-whole-word-masking': 512,
+    'bert-base-japanese-char': 512,
+    'bert-base-japanese-char-whole-word-masking': 512
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
-    "bert-base-japanese": {
-        "do_lower_case": False,
-        "word_tokenizer_type": "mecab",
-        "subword_tokenizer_type": "wordpiece",
+    'bert-base-japanese': {
+        'do_lower_case': False,
+        'word_tokenizer_type': 'mecab',
+        'subword_tokenizer_type': 'wordpiece'
     },
-    "bert-base-japanese-whole-word-masking": {
-        "do_lower_case": False,
-        "word_tokenizer_type": "mecab",
-        "subword_tokenizer_type": "wordpiece",
+    'bert-base-japanese-whole-word-masking': {
+        'do_lower_case': False,
+        'word_tokenizer_type': 'mecab',
+        'subword_tokenizer_type': 'wordpiece'
     },
-    "bert-base-japanese-char": {
-        "do_lower_case": False,
-        "word_tokenizer_type": "mecab",
-        "subword_tokenizer_type": "character",
+    'bert-base-japanese-char': {
+        'do_lower_case': False,
+        'word_tokenizer_type': 'mecab',
+        'subword_tokenizer_type': 'character'
     },
-    "bert-base-japanese-char-whole-word-masking": {
-        "do_lower_case": False,
-        "word_tokenizer_type": "mecab",
-        "subword_tokenizer_type": "character",
-    },
+    'bert-base-japanese-char-whole-word-masking': {
+        'do_lower_case': False,
+        'word_tokenizer_type': 'mecab',
+        'subword_tokenizer_type': 'character'
+    }
 }
 
 
@@ -75,22 +86,12 @@ class BertJapaneseTokenizer(BertTokenizer):
     pretrained_init_configuration = PRETRAINED_INIT_CONFIGURATION
     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
 
-    def __init__(
-        self,
-        vocab_file,
-        do_lower_case=False,
-        do_word_tokenize=True,
-        do_subword_tokenize=True,
-        word_tokenizer_type="basic",
-        subword_tokenizer_type="wordpiece",
-        never_split=None,
-        unk_token="[UNK]",
-        sep_token="[SEP]",
-        pad_token="[PAD]",
-        cls_token="[CLS]",
-        mask_token="[MASK]",
-        **kwargs
-    ):
+    #  sentencepieceは model_file　が必要なので追加する
+    def __init__(self, model_file, vocab_file, do_lower_case=True,
+                 do_word_tokenize=True, do_subword_tokenize=True,
+                 word_tokenizer_type='basic', subword_tokenizer_type='wordpiece',
+                 never_split=None, unk_token='[UNK]', sep_token='[SEP]',
+                 pad_token='[PAD]', cls_token='[CLS]', mask_token='[MASK]', **kwargs):
         """Constructs a MecabBertTokenizer.
 
         Args:
@@ -107,14 +108,9 @@ class BertJapaneseTokenizer(BertTokenizer):
             **subword_tokenizer_type**: (`optional`) string (default "wordpiece")
                 Type of subword tokenizer.
         """
-        super(BertTokenizer, self).__init__(
-            unk_token=unk_token,
-            sep_token=sep_token,
-            pad_token=pad_token,
-            cls_token=cls_token,
-            mask_token=mask_token,
-            **kwargs,
-        )
+        super(BertTokenizer, self).__init__(unk_token=unk_token, sep_token=sep_token,
+                                            pad_token=pad_token, cls_token=cls_token,
+                                            mask_token=mask_token, **kwargs)
         self.max_len_single_sentence = self.max_len - \
             2  # take into account special tokens
         self.max_len_sentences_pair = self.max_len - \
@@ -123,51 +119,62 @@ class BertJapaneseTokenizer(BertTokenizer):
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 "Can't find a vocabulary file at path '{}'. To load the vocabulary from a Google pretrained "
-                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
-                    vocab_file)
-            )
+                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(vocab_file))
         self.vocab = load_vocab(vocab_file)
         self.ids_to_tokens = collections.OrderedDict(
             [(ids, tok) for tok, ids in self.vocab.items()])
 
         self.do_word_tokenize = do_word_tokenize
         if do_word_tokenize:
-            if word_tokenizer_type == "basic":
-                self.word_tokenizer = BasicTokenizer(
-                    do_lower_case=do_lower_case, never_split=never_split, tokenize_chinese_chars=False
-                )
-            elif word_tokenizer_type == "mecab":
-                self.word_tokenizer = MecabTokenizer(
-                    do_lower_case=do_lower_case, never_split=never_split)
+            if word_tokenizer_type == 'basic':
+                self.word_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
+                                                     never_split=never_split,
+                                                     tokenize_chinese_chars=False)
+            elif word_tokenizer_type == 'mecab':
+                self.word_tokenizer = MecabTokenizer(do_lower_case=do_lower_case,
+                                                     never_split=never_split)
+            elif word_tokenizer_type == 'sentencepiece':
+                self.word_tokenizer = SentencePieceTokenizer(model_file=model_file,
+                                                             do_lower_case=True,
+                                                             never_split=never_split)
+                print("----------------select sentencepiece-------------------")
             else:
                 raise ValueError(
                     "Invalid word_tokenizer_type '{}' is specified.".format(word_tokenizer_type))
 
         self.do_subword_tokenize = do_subword_tokenize
         if do_subword_tokenize:
-            if subword_tokenizer_type == "wordpiece":
-                self.subword_tokenizer = WordpieceTokenizer(
-                    vocab=self.vocab, unk_token=self.unk_token)
-            elif subword_tokenizer_type == "character":
-                self.subword_tokenizer = CharacterTokenizer(
-                    vocab=self.vocab, unk_token=self.unk_token)
+            print("----------------do subword tokenize-------------------")
+            if subword_tokenizer_type == 'wordpiece':
+                self.subword_tokenizer = WordpieceTokenizer(vocab=self.vocab,
+                                                            unk_token=self.unk_token)
+            elif subword_tokenizer_type == 'character':
+                self.subword_tokenizer = CharacterTokenizer(vocab=self.vocab,
+                                                            unk_token=self.unk_token)
             else:
-                raise ValueError("Invalid subword_tokenizer_type '{}' is specified.".format(
-                    subword_tokenizer_type))
+                raise ValueError(
+                    "Invalid subword_tokenizer_type '{}' is specified.".format(subword_tokenizer_type))
+        print("-----------tokenizer initialized--------------")
 
     def _tokenize(self, text):
         if self.do_word_tokenize:
-            tokens = self.word_tokenizer.tokenize(
-                text, never_split=self.all_special_tokens)
+            # print("1111111111111111111111111111111111111111111111111111111111111111111111111")
+            tokens = self.word_tokenizer.tokenize(text,
+                                                  never_split=self.all_special_tokens)
         else:
+            # print("2222222222222222222222222222222222222222222222222222222222222222222222222")
             tokens = [text]
 
         if self.do_subword_tokenize:
-            split_tokens = [
-                sub_token for token in tokens for sub_token in self.subword_tokenizer.tokenize(token)]
+            # print(
+            #     "33333333333333333333333333333333333333333333333333333333333333333333333333")
+            split_tokens = [sub_token for token in tokens
+                            for sub_token in self.subword_tokenizer.tokenize(token)]
         else:
+            # print("444444444444444444444444444444444444444444444444444444444444444444444444")
             split_tokens = tokens
-
+        # print("----------bert japanese tokenize---------")
+        print(split_tokens)
         return split_tokens
 
 
@@ -192,26 +199,29 @@ class MecabTokenizer(object):
         self.normalize_text = normalize_text
 
         import MeCab
-
         self.mecab = MeCab.Tagger()
 
     def tokenize(self, text, never_split=None, **kwargs):
         """Tokenizes a piece of text."""
         if self.normalize_text:
-            text = unicodedata.normalize("NFKC", text)
+            text = unicodedata.normalize('NFKC', text)
 
         never_split = self.never_split + \
             (never_split if never_split is not None else [])
         tokens = []
 
-        mecab_output = self.mecab.parse(text)
+        if six.PY2:
+            mecab_output = self.mecab.parse(
+                text.encode('utf-8')).decode('utf-8')
+        else:
+            mecab_output = self.mecab.parse(text)
 
         cursor = 0
-        for line in mecab_output.split("\n"):
-            if line == "EOS":
+        for line in mecab_output.split('\n'):
+            if line == 'EOS':
                 break
 
-            token, _ = line.split("\t")
+            token, _ = line.split('\t')
             token_start = text.index(token, cursor)
             token_end = token_start + len(token)
             if self.do_lower_case and token not in never_split:
@@ -254,7 +264,7 @@ class CharacterTokenizer(object):
             A list of characters.
         """
         if self.normalize_text:
-            text = unicodedata.normalize("NFKC", text)
+            text = unicodedata.normalize('NFKC', text)
 
         output_tokens = []
         for i, char in enumerate(text):
@@ -265,3 +275,60 @@ class CharacterTokenizer(object):
             output_tokens.append(char)
 
         return output_tokens
+
+# ここから追加
+
+
+class SentencePieceTokenizer(object):
+    """Runs SentencePiece tokenization (from raw text to tokens list)"""
+
+    # never splitは不要だが他に合わせて引数には含めておく
+    def __init__(self, model_file=None, do_lower_case=True, normalize_text=True, never_split=None):
+        """Constructs a SentencePieceTokenizer."""
+        self.tokenizer = sp.SentencePieceProcessor()
+        if self.tokenizer.Load(model_file):
+            print("Loaded a trained SentencePiece model.")
+        else:
+            print("You have to set the path to a trained SentencePiece model.")
+            sys.exit(1)
+        self.do_lower_case = do_lower_case
+        self.normalize_text = normalize_text
+
+    # never splitは不要だが他に合わせて引数には含めておく
+    def tokenize(self, text_list, never_split=None):
+        """Tokenizes a piece of text."""
+        # text = convert_to_unicode(text)
+
+        text = text_list[0]
+        if self.normalize_text:
+            text = unicodedata.normalize('NFKC', text)
+
+        if self.do_lower_case:
+            text = text.lower()
+
+        output_tokens = self.tokenizer.EncodeAsPieces(text)
+
+        # print("--------------output token start--------------")
+        # print(output_tokens)
+        # print("--------------output token end---------------")
+        return output_tokens
+
+
+# def convert_to_unicode(text):
+#     """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
+#     if six.PY3:
+#         if isinstance(text, str):
+#             return text
+#         elif isinstance(text, bytes):
+#             return text.decode("utf-8", "ignore")
+#         else:
+#             raise ValueError("Unsupported string type: %s" % (type(text)))
+#     elif six.PY2:
+#         if isinstance(text, str):
+#             return text.decode("utf-8", "ignore")
+#         elif isinstance(text, unicode):
+#             return text
+#         else:
+#             raise ValueError("Unsupported string type: %s" % (type(text)))
+#     else:
+#         raise ValueError("Not running on Python2 or Python 3?")
