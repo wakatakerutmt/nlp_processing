@@ -18,7 +18,7 @@
 from __future__ import absolute_import, division, print_function
 from transformers.data.processors.squad import SquadV1Processor, SquadV2Processor, SquadResult
 from transformers.data.metrics.squad_metrics import compute_predictions_logits, compute_predictions_log_probs, squad_evaluate
-
+from pprint import pprint
 import argparse
 import logging
 import os
@@ -226,10 +226,11 @@ def train(args, train_dataset, model, tokenizer):
                     torch.save(args, os.path.join(
                         output_dir, 'training_args.bin'))
                     logger.info("Saving model checkpoint to %s", output_dir)
-
+            logger.info("1average loss = %s", tr_loss)
             if args.max_steps > 0 and global_step > args.max_steps:
                 epoch_iterator.close()
                 break
+        logger.info("2average loss = %s", tr_loss)
         if args.max_steps > 0 and global_step > args.max_steps:
             train_iterator.close()
             break
@@ -412,6 +413,7 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
             is_training=not evaluate,
             return_dataset='pt'
         )
+        pprint(vars(dataset))
 
         if args.local_rank in [-1, 0]:
             logger.info("Saving features into cached file %s",

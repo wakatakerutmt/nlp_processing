@@ -122,24 +122,30 @@ def squad_convert_examples_to_features(
     unique_id = 1000000000
 
     features = []
-    print("--------------examples------------------")
-    count = 0
 
     for (example_index, example) in enumerate(tqdm(examples, desc="Converting examples to features")):
-        if count == 0:
-            print(example)
-            count += 1
 
         if is_training and not example.is_impossible:
             # Get start and end position
             start_position = example.start_position
             end_position = example.end_position
-
+            print(
+                "----------------111111---start_position--end_position-----------------")
+            print(start_position)
+            print(end_position)
+            print(
+                "-------------------end-111111---start_position--end_position----------------")
             # If the answer cannot be found in the text, then skip this example.
             actual_text = " ".join(
                 example.doc_tokens[start_position: (end_position + 1)])
             cleaned_answer_text = " ".join(
                 whitespace_tokenize(example.answer_text))
+            print(
+                "----------------2222---actual_text--cleaned_answer_text---------------")
+            print(actual_text)
+            print(cleaned_answer_text)
+            print(
+                "-------------------end-2222---actual_text--cleaned_answer_text----------------")
             if actual_text.find(cleaned_answer_text) == -1:
                 logger.warning("Could not find answer: '%s' vs. '%s'",
                                actual_text, cleaned_answer_text)
@@ -148,13 +154,20 @@ def squad_convert_examples_to_features(
         tok_to_orig_index = []
         orig_to_tok_index = []
         all_doc_tokens = []
+        print("-------------example.doc_tokens----------------------")
+        print(example.doc_tokens)
+        print("-------------end example.doc_tokens-------------")
         for (i, token) in enumerate(example.doc_tokens):
+            print()
             orig_to_tok_index.append(len(all_doc_tokens))
             sub_tokens = tokenizer.tokenize(token)
             for sub_token in sub_tokens:
                 tok_to_orig_index.append(i)
                 all_doc_tokens.append(sub_token)
 
+        print("-------------orig_to_tok_index----------------------")
+        print(orig_to_tok_index)
+        print("-------------end orig_to_tok_index-------------")
         if is_training and not example.is_impossible:
             tok_start_position = orig_to_tok_index[example.start_position]
             if example.end_position < len(example.doc_tokens) - 1:
@@ -165,11 +178,16 @@ def squad_convert_examples_to_features(
             (tok_start_position, tok_end_position) = _improve_answer_span(
                 all_doc_tokens, tok_start_position, tok_end_position, tokenizer, example.answer_text
             )
-
+        print(
+            "------------------tok_start_position--tok_end_position-----------------")
+        print(tok_start_position)
+        print(tok_end_position)
+        print(
+            "------------------end tok_start_position--tok_end_position-----------------")
         spans = []
 
-        # print("----------------example.question_text-------------------")
-        # print(example.question_text)
+        print("----------------example.question_text-------------------")
+        print(example.question_text)
         # print("--------------------tokenizer----------------")
         # print(tokenizer)
         truncated_query = tokenizer.encode(
@@ -292,7 +310,21 @@ def squad_convert_examples_to_features(
 
                     start_position = tok_start_position - doc_start + doc_offset
                     end_position = tok_end_position - doc_start + doc_offset
-
+            print(
+                "--------------------------span[input_ids]-------------------")
+            print(span["input_ids"])
+            print(
+                "--------------------------end_span[input_ids]-------------------")
+            print(
+                "--------------------------start_position-------------------")
+            print(start_position)
+            print(
+                "--------------------------end_start_position-------------------")
+            print(
+                "--------------------------end_position-------------------")
+            print(end_position)
+            print(
+                "--------------------------end_position-------------------")
             features.append(
                 SquadFeatures(
                     span["input_ids"],
@@ -614,11 +646,30 @@ class SquadExample(object):
         self.doc_tokens = doc_tokens
         self.char_to_word_offset = char_to_word_offset
 
+        print("---------------Squad EXample---------------------")
+        print(start_position_character)
+        print(context_text)
+        print(question_text)
+        print(answer_text)
+        print(answers)
+        print("以上 1")
+        print(doc_tokens)
+        print(char_to_word_offset)
+        print("以上 2")
+        print(start_position_character)
+        print(char_to_word_offset[start_position_character])
+        print(char_to_word_offset[
+            min(start_position_character + len(answer_text) -
+                1, len(char_to_word_offset) - 1)
+        ])
+        print("以上 3")
         # Start end end positions only has a value during evaluation.
         if start_position_character is not None and not is_impossible:
             self.start_position = char_to_word_offset[start_position_character]
             self.end_position = char_to_word_offset[start_position_character + len(
                 answer_text) - 1]
+            print("ここを通る")
+        print("---------------end Squad EXample---------------------")
 
 
 class SquadFeatures(object):
