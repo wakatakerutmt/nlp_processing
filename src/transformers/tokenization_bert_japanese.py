@@ -87,7 +87,7 @@ class BertJapaneseTokenizer(BertTokenizer):
     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
 
     #  sentencepieceは model_file　が必要なので追加する
-    def __init__(self, model_file, vocab_file, do_lower_case=True,
+    def __init__(self, vocab_file, model_file=None, do_lower_case=True,
                  do_word_tokenize=True, do_subword_tokenize=True,
                  word_tokenizer_type='basic', subword_tokenizer_type='wordpiece',
                  never_split=None, unk_token='[UNK]', sep_token='[SEP]',
@@ -134,6 +134,9 @@ class BertJapaneseTokenizer(BertTokenizer):
                 self.word_tokenizer = MecabTokenizer(do_lower_case=do_lower_case,
                                                      never_split=never_split)
             elif word_tokenizer_type == 'sentencepiece':
+                if model_file is None:
+                    raise ValueError(
+                        "Can't find sentenceppiece model file.")
                 self.word_tokenizer = SentencePieceTokenizer(model_file=model_file,
                                                              do_lower_case=True,
                                                              never_split=never_split)
