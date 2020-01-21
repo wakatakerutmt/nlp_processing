@@ -191,7 +191,7 @@ class MrpcProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
-            print(line)
+            # print(line)
             if i == 0:
                 continue
             guid = "%s-%s" % (set_type, i)
